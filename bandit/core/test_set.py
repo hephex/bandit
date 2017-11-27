@@ -121,3 +121,11 @@ class BanditTestSet(object):
         :return: A list of tests which are of the specified type
         '''
         return self.tests.get(checktype) or []
+
+    def get_all_tests(self):
+        '''Returns all the tests contained in the set.
+
+        :yield: a test in the set.
+        '''
+        for plugins in self.tests.values():  # TODO use six
+            yield from plugins

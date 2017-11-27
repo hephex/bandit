@@ -27,12 +27,13 @@ LOG = logging.getLogger(__name__)
 
 
 class BanditTester(object):
-    def __init__(self, testset, debug, nosec_lines):
+    def __init__(self, testset, debug, nosec_lines, metrics):
         self.results = []
         self.testset = testset
         self.last_result = None
         self.debug = debug
         self.nosec_lines = nosec_lines
+        self.metrics = metrics
 
     def run_tests(self, raw_context, checktype):
         '''Runs all tests for a certain type of check, for example
@@ -64,9 +65,17 @@ class BanditTester(object):
                     result = test(context)
 
                 # if we have a result, record it and update scores
-                if (result is not None and
-                        result.lineno not in self.nosec_lines and
-                        temp_context['lineno'] not in self.nosec_lines):
+                if result is not None:
+                    test_id = result.test_id or test._test_id
+                    skip = test_id in self.nosec_lines.get(
+                        result.lineno, set())
+                    skip |= test_id in self.nosec_lines.get(
+                        temp_context['lineno'], set())
+
+                    if skip:
+                        LOG.debug("skipped, nosec %s" % test_id)
+                        self.metrics.note_nosec()
+                        continue
 
                     if isinstance(temp_context['filename'], bytes):
                         result.fname = temp_context['filename'].decode('utf-8')

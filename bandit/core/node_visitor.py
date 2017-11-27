@@ -43,7 +43,7 @@ class BanditNodeVisitor(object):
         self.imports = set()
         self.import_aliases = {}
         self.tester = b_tester.BanditTester(
-            self.testset, self.debug, nosec_lines)
+            self.testset, self.debug, nosec_lines, metrics)
 
         # in some cases we can't determine a qualified name
         try:
@@ -53,7 +53,6 @@ class BanditNodeVisitor(object):
                      self.fname)
             self.namespace = ""
         LOG.debug('Module qualified name: %s', self.namespace)
-        self.metrics = metrics
 
     def visit_ClassDef(self, node):
         '''Visitor for AST ClassDef node
@@ -190,10 +189,11 @@ class BanditNodeVisitor(object):
         if hasattr(node, 'lineno'):
             self.context['lineno'] = node.lineno
 
-            if node.lineno in self.nosec_lines:
-                LOG.debug("skipped, nosec")
-                self.metrics.note_nosec()
-                return False
+            # TODO
+            #  if node.lineno in self.nosec_lines:
+            #      LOG.debug("skipped, nosec")
+            #      self.metrics.note_nosec()
+            #      return False
 
         self.context['node'] = node
         self.context['linerange'] = b_utils.linerange_fix(node)

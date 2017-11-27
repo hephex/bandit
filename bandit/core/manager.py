@@ -268,12 +268,18 @@ class BanditManager(object):
             self.metrics.begin(fname)
             self.metrics.count_locs(lines)
             if self.ignore_nosec:
-                nosec_lines = set()
+                nosec_lines = {}
             else:
-                nosec_lines = set(
-                    lineno + 1 for
-                    (lineno, line) in enumerate(lines)
-                    if b'#nosec' in line or b'# nosec' in line)
+                all_tests = {
+                    test._test_id
+                    for test in self.b_ts.get_all_tests()
+                }
+
+                nosec_lines = {
+                    lineno + 1: _extract_nosec_tests(line, all_tests)
+                    for (lineno, line) in enumerate(lines)
+                    if b'#nosec' in line or b'# nosec' in line
+                }
             score = self._execute_ast_visitor(fname, data, nosec_lines)
             self.scores.append(score)
             self.metrics.count_issues([score, ])
@@ -396,3 +402,25 @@ def _find_candidate_matches(unmatched_issues, results_list):
                                         unmatched == i])
 
     return issue_candidates
+
+
+def _extract_nosec_tests(line, all_tests):
+    """Returns all the test to skip stated in the code line.
+
+    For example, if a line contains the comment `# nosec: B123, B456`, Bandit
+    will report any failed test except for `B123` and `B456`.
+
+    :param line: String to analyse.
+    :param all_tests: Set of test codes to use for nosec with no arguments.
+    :return: A set of tests to skip.
+    """
+    _, sep, tests = line.partition(b'nosec')
+    if not sep:
+        return set()
+
+    tests = tests.strip()
+
+    if not tests.startswith(b':'):
+        return set(all_tests)
+
+    return {test.strip().decode('utf-8') for test in tests[1:].split(b',')}
